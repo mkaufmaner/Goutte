@@ -29,180 +29,192 @@ use Symfony\Component\BrowserKit\Response;
  */
 class Client extends BaseClient
 {
-    protected $client;
+	protected $client;
 
-    private $headers = array();
-    private $auth = null;
+	private $headers = array();
+	private $auth = null;
 
-    public function setClient(GuzzleClientInterface $client)
-    {
-        $this->client = $client;
+	public function setClient(GuzzleClientInterface $client)
+	{
+		$this->client = $client;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getClient()
-    {
-        if (!$this->client) {
-            $this->client = new GuzzleClient(array('defaults' => array('allow_redirects' => false, 'cookies' => true)));
-        }
+	public function getClient()
+	{
+		if (!$this->client) {
+			$this->client = new GuzzleClient(array('defaults' => array('allow_redirects' => false, 'cookies' => true)));
+		}
 
-        return $this->client;
-    }
+		return $this->client;
+	}
 
-    public function setHeader($name, $value)
-    {
-        $this->headers[$name] = $value;
+	public function setHeader($name, $value)
+	{
+		$this->headers[$name] = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function removeHeader($name)
-    {
-        unset($this->headers[$name]);
-    }
+	public function removeHeader($name)
+	{
+		unset($this->headers[$name]);
+	}
 
-    public function setAuth($user, $password = '', $type = 'basic')
-    {
-        $this->auth = array($user, $password, $type);
+	public function setAuth($user, $password = '', $type = 'basic')
+	{
+		$this->auth = array($user, $password, $type);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function resetAuth()
-    {
-        $this->auth = null;
+	public function resetAuth()
+	{
+		$this->auth = null;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * @param Request $request
-     *
-     * @return Response
-     */
-    protected function doRequest($request)
-    {
-        $headers = array();
-        foreach ($request->getServer() as $key => $val) {
-            $key = strtolower(str_replace('_', '-', $key));
-            $contentHeaders = array('content-length' => true, 'content-md5' => true, 'content-type' => true);
-            if (0 === strpos($key, 'http-')) {
-                $headers[substr($key, 5)] = $val;
-            }
-            // CONTENT_* are not prefixed with HTTP_
-            elseif (isset($contentHeaders[$key])) {
-                $headers[$key] = $val;
-            }
-        }
+	/**
+	 * @param Request $request
+	 *
+	 * @return Response
+	 */
+	protected function doRequest($request)
+	{
+		$headers = array();
+		foreach ($request->getServer() as $key => $val) {
+			$key = strtolower(str_replace('_', '-', $key));
+			$contentHeaders = array('content-length' => true, 'content-md5' => true, 'content-type' => true);
+			if (0 === strpos($key, 'http-')) {
+				$headers[substr($key, 5)] = $val;
+			}
+			// CONTENT_* are not prefixed with HTTP_
+			elseif (isset($contentHeaders[$key])) {
+				$headers[$key] = $val;
+			}
+		}
 
-        $cookies = CookieJar::fromArray(
-            $this->getCookieJar()->allRawValues($request->getUri()),
-            parse_url($request->getUri(), PHP_URL_HOST)
-        );
+		$cookies = CookieJar::fromArray(
+			$this->getCookieJar()->allRawValues($request->getUri()),
+			parse_url($request->getUri(), PHP_URL_HOST)
+		);
 
-        $requestOptions = array(
-            'cookies' => $cookies,
-            'allow_redirects' => false,
-            'auth' => $this->auth,
-        );
+		$requestOptions = array(
+			'cookies' => $cookies,
+			'allow_redirects' => false,
+			'auth' => $this->auth,
+		);
 
-        if (!in_array($request->getMethod(), array('GET', 'HEAD'))) {
-            if (null !== $content = $request->getContent()) {
-                $requestOptions['body'] = $content;
-            } else {
-                if ($files = $request->getFiles()) {
-                    $requestOptions['multipart'] = [];
+		if (!in_array($request->getMethod(), array('GET', 'HEAD'))) {
+			if (null !== $content = $request->getContent()) {
+				$requestOptions['body'] = $content;
+			} else {
+				if ($files = $request->getFiles()) {
+					$requestOptions['multipart'] = [];
 
-                    $this->addPostFields($request->getParameters(), $requestOptions['multipart']);
-                    $this->addPostFiles($files, $requestOptions['multipart']);
-                } else {
-                    $requestOptions['form_params'] = $request->getParameters();
-                }
-            }
-        }
+					$this->addPostFields($request->getParameters(), $requestOptions['multipart']);
+					$this->addPostFiles($files, $requestOptions['multipart']);
+				} else {
+					$requestOptions['form_params'] = $request->getParameters();
+				}
+			}
+		}
 
-        if (!empty($headers)) {
-            $requestOptions['headers'] = $headers;
-        }
+		if (!empty($headers)) {
+			$requestOptions['headers'] = $headers;
+		}
 
-        $method = $request->getMethod();
-        $uri = $request->getUri();
+		$method = $request->getMethod();
+		$uri = $request->getUri();
 
-        foreach ($this->headers as $name => $value) {
-            $requestOptions['headers'][$name] = $value;
-        }
+		foreach ($this->headers as $name => $value) {
+			$requestOptions['headers'][$name] = $value;
+		}
 
-        // Let BrowserKit handle redirects
-        try {
-            $response = $this->getClient()->request($method, $uri, $requestOptions);
-        } catch (RequestException $e) {
-            $response = $e->getResponse();
-            if (null === $response) {
-                throw $e;
-            }
-        }
+		// Let BrowserKit handle redirects
+		try {
+			$response = $this->getClient()->request($method, $uri, $requestOptions);
+		} catch (RequestException $e) {
+			$response = $e->getResponse();
+			if (null === $response) {
+				throw $e;
+			}
+		}
 
-        return $this->createResponse($response);
-    }
+		return $this->createResponse($response);
+	}
 
-    protected function addPostFiles(array $files, array &$multipart, $arrayName = '')
-    {
-        if (empty($files)) {
-            return;
-        }
+	protected function addPostFiles(array $files, array &$multipart, $arrayName = '')
+	{
+		if (empty($files)) {
+			return;
+		}
 
-        foreach ($files as $name => $info) {
-            if (!empty($arrayName)) {
-                $name = $arrayName.'['.$name.']';
-            }
+		foreach ($files as $name => $info) {
+			if (!empty($arrayName)) {
+				$name = $arrayName.'['.$name.']';
+			}
 
-            $file = [
-                'name' => $name,
-            ];
+			$file = [
+				'name' => $name,
+			];
 
-            if (is_array($info)) {
-                if (isset($info['tmp_name'])) {
-                    if ('' !== $info['tmp_name']) {
-                        $file['contents'] = fopen($info['tmp_name'], 'r');
-                        if (isset($info['name'])) {
-                            $file['filename'] = $info['name'];
-                        }
-                    } else {
-                        continue;
-                    }
-                } else {
-                    $this->addPostFiles($info, $multipart, $name);
-                    continue;
-                }
-            } else {
-                $file['contents'] = fopen($info, 'r');
-            }
+			if (is_array($info)) {
+				if (isset($info['tmp_name'])) {
+					if ('' !== $info['tmp_name']) {
+						$file['contents'] = fopen($info['tmp_name'], 'r');
+						if (isset($info['name'])) {
+							$file['filename'] = $info['name'];
+						}
+					} else {
+						continue;
+					}
+				} else {
+					$this->addPostFiles($info, $multipart, $name);
+					continue;
+				}
+			} else {
+				$file['contents'] = fopen($info, 'r');
+			}
 
-            $multipart[] = $file;
-        }
-    }
+			$multipart[] = $file;
+		}
+	}
 
-    public function addPostFields(array $formParams, array &$multipart, $arrayName = '')
-    {
-        foreach ($formParams as $name => $value) {
-            if (!empty($arrayName)) {
-                $name = $arrayName.'['.$name.']';
-            }
+	public function addPostFields(array $formParams, array &$multipart, $arrayName = '')
+	{
+		foreach ($formParams as $name => $value) {
+			if (!empty($arrayName)) {
+				$name = $arrayName.'['.$name.']';
+			}
 
-            if (is_array($value)) {
-                $this->addPostFields($value, $multipart, $name);
-            } else {
-                $multipart[] = [
-                    'name' => $name,
-                    'contents' => $value,
-                ];
-            }
-        }
-    }
+			if (is_array($value)) {
+				$this->addPostFields($value, $multipart, $name);
+			} else {
+				$multipart[] = [
+					'name' => $name,
+					'contents' => $value,
+				];
+			}
+		}
+	}
 
-    protected function createResponse(ResponseInterface $response)
-    {
-        return new Response((string) $response->getBody(), $response->getStatusCode(), $response->getHeaders());
-    }
+	protected function createResponse(ResponseInterface $response)
+	{
+		//cleanup the body
+		$body = (string) $response->getBody();
+
+		if(!empty($body)){
+			$tidy = new \tidy();
+			$tidy->parseString($body);
+			$tidy->cleanRepair();
+
+			//set body
+			$body = $tidy;
+		}
+
+		return new Response($body, $response->getStatusCode(), $response->getHeaders());
+	}
 }
