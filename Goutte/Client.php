@@ -207,8 +207,37 @@ class Client extends BaseClient
 		$body = (string) $response->getBody();
 
 		if(!empty($body)){
+			//init object
 			$tidy = new \tidy();
-			$tidy->parseString($body);
+			$encoding = 'ascii';
+			$encodingMatch = [];
+
+			//extract encoding
+			if(preg_match('/.*?charset=(.*)">/i', $body, $encodingMatch)){
+				if(!empty($encodingMatch[1])){
+					$encoding = strtolower(trim($encodingMatch[1]));
+
+					//filter encoding for tidy
+					switch($encoding){
+						case 'windows-1252':
+							$encoding = 'win1252';
+							break;
+
+						case 'utf-8':
+							$encoding = 'utf8';
+							break;
+
+						case 'iso-8859-1':
+							$encoding = 'latin1';
+							break;
+					}
+				}
+			}
+
+			//parse with encoding
+			$tidy->parseString($body, ['wrap' => 0], $encoding);
+			
+			//clean and repaire
 			$tidy->cleanRepair();
 
 			//set body
