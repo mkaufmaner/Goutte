@@ -213,7 +213,7 @@ class Client extends BaseClient
 			$encodingMatch = [];
 
 			//extract encoding
-			if(preg_match('/.*?charset=(.*?)">/i', $body, $encodingMatch)){
+			if(preg_match('/.*?charset=(.*?)"/i', $body, $encodingMatch)){
 				if(!empty($encodingMatch[1])){
 					$encoding = strtolower(trim($encodingMatch[1]));
 
